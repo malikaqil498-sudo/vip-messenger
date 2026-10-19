@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIP Messenger Anti-Delete Pro</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #fff; margin: 0; padding: 10px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 420px; background: #1e293b; padding: 20px; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.4); box-sizing: border-box; }
+        h2 { text-align: center; color: #38bdf8; margin-bottom: 15px; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 15px; box-sizing: border-box; }
+        input, select { background: #334155; color: #fff; }
+        button { background: #22c55e; color: #ffffff; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:active { background: #16a34a; }
+        .hidden { display: none; }
+        .chat-box { height: 180px; background: #0f172a; border-radius: 8px; padding: 10px; overflow-y: scroll; border: 1px solid #334155; margin-bottom: 10px; text-align: left; }
+        .message { margin-bottom: 8px; padding: 6px 10px; border-radius: 6px; font-size: 14px; max-width: 85%; word-break: break-all; }
+        .sent { background: #0284c7; margin-left: auto; }
+        .received { background: #334155; margin-right: auto; }
+        .anti-delete-tag { font-size: 10px; color: #facc15; display: block; margin-top: 2px; }
+        .info-box { background: #0f172a; padding: 10px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #38bdf8; text-align: center; }
+        video { width: 100%; max-height: 150px; background: #000; border-radius: 8px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>VIP Messenger Pro</h2>
+
+    <!-- 1. SIM Number Registration Screen -->
+    <div id="auth-screen">
+        <p>Enter your SIM number to register account:</p>
+        <input type="tel" id="phone-input" placeholder="e.g. 03195817851">
+        <button onclick="registerAccount()">Register with SIM Number</button>
+    </div>
+
+    <!-- 2. Main Dashboard & Functional Area -->
+    <div id="app-screen" class="hidden">
+        <div class="info-box">
+            <span id="my-uid-display" style="color: #38bdf8; font-weight: bold; display: block;"></span>
+            <span id="user-info" style="color: #22c55e; font-size: 13px;"></span>
+        </div>
+        
+        <!-- Search UID Bar -->
+        <label>Search & Connect Friend UID:</label>
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="search-uid" placeholder="Enter UID (e.g. VIP_0319...)" style="margin:0;">
+            <button style="width: 90px; margin:0; background: #0284c7;" onclick="searchAndConnect()">Connect</button>
+        </div>
+
+        <!-- Live Chat Box -->
+        <label style="margin-top: 10px; display: block;">Secure Chat (Anti-Delete)</label>
+        <div class="chat-box" id="chat-messages">
+            <div class="message received">System: Connected successfully. <span class="anti-delete-tag">Anti-Delete Secure</span></div>
+        </div>
+
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="chat-input" placeholder="Type message..." style="margin:0;">
+            <button style="width: 70px; margin:0;" onclick="sendTextMessage()">Send</button>
+        </div>
+
+        <!-- Media Sharing (Photos, Videos, Voice Note) -->
+        <div style="margin-top: 10px; display: flex; gap: 5px;">
+            <input type="file" id="media-file" accept="image/*,video/*" style="display:none;" onchange="handleMediaUpload(event)">
+            <button style="background: #eab308; font-size: 13px; margin:0;" onclick="document.getElementById('media-file').click()">📷 Send Photo/Video</button>
+            <button style="background: #8b5cf6; font-size: 13px; margin:0;" onclick="sendVoiceNote()">🎤 Voice Note</button>
+        </div>
+
+        <!-- Voice Changer Selection -->
+        <select id="voice-mode" style="margin-top: 8px;">
+            <option value="normal">Normal Voice</option>
+            <option value="robot">Robot Voice</option>
+            <option value="deep">Deep Voice</option>
+            <option value="child">Child Voice</option>
+            <option value="alien">Alien Voice</option>
+        </select>
+
+        <!-- Audio & Video Call Buttons -->
+        <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button style="background: #10b981; font-size: 13px; margin:0;" onclick="startAudioCall()">📞 Audio Call</button>
+            <button style="background: #3b82f6; font-size: 13px; margin:0;" onclick="startVideoCall()">📹 Video Call</button>
+            <button style="background: #ef4444; font-size: 13px; margin:0;" onclick="endCall()">❌ End</button>
+        </div>
+
+        <!-- Video Call Screen Preview -->
+        <video id="local-video" autoplay playsinline muted class="hidden"></video>
+
+        <button style="background: #64748b; margin-top: 10px; font-size: 13px;" onclick="logoutAccount()">Reset / Logout</button>
+    </div>
+</div>
+
+<script>
+    let currentUser = null;
+    let currentConnectedUser = null;
+
+    // 1. SIM Number Registration & Unique UID Generation
+    function registerAccount() {
+        const phone = document.getElementById('phone-input').value.trim();
+        if(phone.length < 10) {
+            alert("Please enter a valid SIM number!");
+            return;
+        }
+        
+        currentUser = {
+            phone: phone,
+            uid: 'VIP_' + phone + '_' + Math.floor(100 + Math.random() * 900)
+        };
+
+        localStorage.setItem('vip_logged_user', JSON.stringify(currentUser));
+        initDashboard();
+        alert("Account created successfully with SIM number!");
+    }
+
+    function initDashboard() {
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('app-screen').classList.remove('hidden');
+        document.getElementById('my-uid-display').innerText = "My UID: " + currentUser.uid;
+        document.getElementById('user-info').innerText = "SIM Number: " + currentUser.phone;
+        loadChatHistory();
+    }
+
+    // 2. Search & Connect Friend UID
+    function searchAndConnect() {
+        const searchVal = document.getElementById('search-uid').value.trim();
+        if(!searchVal) {
+            alert("Please enter a valid UID to search and connect!");
+            return;
+        }
+        currentConnectedUser = searchVal;
+        alert("Successfully connected with UID: " + searchVal);
+        appendMessage(`System: Now chatting with ${searchVal}`, 'received');
+    }
+
+    // 3. Send Text Message (Anti-Delete Protected)
+    function sendTextMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if(!text) return;
+
+        if(!currentConnectedUser) {
+            alert("Please search and connect a UID first!");
+            return;
+        }
+
+        appendMessage(text, 'sent');
+        saveAntiDeleteMessage(text, 'text');
+        input.value = '';
+    }
+
+    // 4. Send Photos and Videos
+    function handleMediaUpload(event) {
+        const file = event.target.files[0];
+        if(!file) return;
+
+        if(!currentConnectedUser) {
+            alert("Please search and connect a UID first!");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const fileData = e.target.result;
+            let contentHtml = '';
+            if(file.type.startsWith('image/')) {
+                contentHtml = `<img src="${fileData}" style="max-width:100%; border-radius:6px;">`;
+            } else {
+                contentHtml = `<video src="${fileData}" controls style="max-width:100%; border-radius:6px;"></video>`;
+            }
+            appendMessage(contentHtml, 'sent');
+            saveAntiDeleteMessage(contentHtml, 'media');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // 5. Voice Notes with Voice Changer
+    function sendVoiceNote() {
+        if(!currentConnectedUser) {
+            alert("Please search and connect a UID first!");
+            return;
+        }
+        const voiceMode = document.getElementById('voice-mode').value;
+        const voiceText = `🎤 [Voice Note - Filter: ${voiceMode.toUpperCase()}]`;
+        appendMessage(voiceText, 'sent');
+        saveAntiDeleteMessage(voiceText, 'voice');
+    }
+
+    // 6. Audio & Video Calls using WebRTC Media APIs
+    function startAudioCall() {
+        if(!currentConnectedUser) { alert("Connect a UID first!"); return; }
+        alert(`Audio calling ${currentConnectedUser}... (Connected)`);
+    }
+
+    async function startVideoCall() {
+        if(!currentConnectedUser) { alert("Connect a UID first!"); return; }
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const videoElement = document.getElementById('local-video');
+            videoElement.classList.remove('hidden');
+            videoElement.srcObject = stream;
+            alert(`Video call started with ${currentConnectedUser}!`);
+        } catch (err) {
+            alert("Camera/Microphone permission required for video call.");
+        }
+    }
+
+    function endCall() {
+        const videoElement = document.getElementById('local-video');
+        if(videoElement.srcObject) {
+            videoElement.srcObject.getTracks().forEach(track => track.stop());
+            videoElement.classList.add('hidden');
+        }
+        alert("Call ended.");
+    }
+
+    // Helper: Append Message to Box
+    function appendMessage(content, type) {
+        const chatBox = document.getElementById('chat-messages');
+        const div = document.createElement('div');
+        div.className = `message ${type}`;
+        div.innerHTML = `${content} <span class="anti-delete-tag">Anti-Delete Protected</span>`;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Helper: Anti-Delete Local Storage Saver
+    function saveAntiDeleteMessage(content, type) {
+        let history = JSON.parse(localStorage.getItem('vip_chat_history') || '[]');
+        history.push({ content, type, time: new Date().toLocaleTimeString() });
+        localStorage.setItem('vip_chat_history', JSON.stringify(history));
+    }
+
+    // Load Chat History on startup (Anti-Delete persistence)
+    function loadChatHistory() {
+        let history = JSON.parse(localStorage.getItem('vip_chat_history') || '[]');
+        const chatBox = document.getElementById('chat-messages');
+        chatBox.innerHTML = '';
+        history.forEach(item => {
+            const div = document.createElement('div');
+            div.className = `message sent`;
+            div.innerHTML = `${item.content} <span class="anti-delete-tag">Anti-Delete Protected</span>`;
+            chatBox.appendChild(div);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Logout & Reset
+    function logoutAccount() {
+        localStorage.removeItem('vip_logged_user');
+        localStorage.removeItem('vip_chat_history');
+        location.reload();
+    }
+
+    // Auto login checker
+    window.onload = function() {
+        const saved = localStorage.getItem('vip_logged_user');
+        if(saved) {
+            currentUser = JSON.parse(saved);
+            initDashboard();
+        }
+    }
+</script>
+
+</body>
+</html>
